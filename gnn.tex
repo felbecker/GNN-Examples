@@ -1,0 +1,262 @@
+\documentclass{beamer}
+\usepackage{graphicx}
+\usepackage{adjustbox} % for \adjincludegraphics
+\usepackage{braket}
+\usepackage{bbm}
+
+\usepackage[utf8]{inputenc}
+
+
+\title{Graph Neural Networks}
+\author{Felix Becker}
+\institute{University of Greifswald}
+\date{\today}
+
+
+\usetheme{Rochester}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}
+\frametitle{Graphs are everywhere}
+\centering \adjincludegraphics[width=1\linewidth, valign=t]{figures/graphs_are_everywhere.pdf}
+\end{frame}
+
+\begin{frame}
+\frametitle{Inductive bias}
+\begin{itemize}
+\item Often, data does not come as individual objects...
+
+\begin{columns}[T]
+\begin{column}{.4\textwidth}
+\centering \adjincludegraphics[width=0.8\linewidth, valign=t]{figures/dataset1.pdf}
+\end{column} \pause
+\begin{column}{.6\textwidth}
+\adjincludegraphics[width=0.75\linewidth, valign=t]{figures/dataset2.pdf}
+\end{column}
+\end{columns}
+
+\item  ... but rather in sets of objects and rules on how they interact. \pause
+\item  Inductive bias: constraints imposed on the set of possible pairwise interactions (represented as a graph). \pause
+
+\item Making predictions requires 'relational reasoning' based on the graph structure.
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Inductive bias}
+Inductive biases can be well defined independent of the data examples: \pause 
+\begin{block}{Sequences}
+\centering \adjincludegraphics[width=0.9\linewidth, valign=t]{figures/sequence.pdf} \pause
+\end{block}
+\begin{block}{Images}
+\begin{columns}[T]
+\begin{column}{.6\textwidth}
+\centering \adjincludegraphics[width=0.8\linewidth, valign=t]{figures/forest.jpeg}
+\end{column} 
+\begin{column}{.5\textwidth}
+\adjincludegraphics[width=0.8\linewidth, valign=t]{figures/pixel_graid_graph.pdf}
+\end{column}
+\end{columns}
+\end{block} 
+\end{frame}
+
+\begin{frame}
+\frametitle{Inductive bias}
+\begin{itemize}
+\item We have dedicated models for some cases: \pause
+\begin{itemize}
+\item Recurrent architectures for sequences. \pause
+\item Convolutional neural networks for images. \pause 
+\end{itemize}
+\item But how to handle data with less well defined inductive biases? (e.g. chemical molecules, road networks, citation networks...)  
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Graph Neural Networks (GNNs)}
+
+\begin{block}{Definition: Feature graph}
+A (directed) feature graph is a 3-tuple $G=(u,V,E)$ with a global attribute $u$, nodes $V = \set{v_i}_{i=1,\dots,n}$ where $v_i$ are the attributes of the node at index $i$ and edges $E = \set{(e_j, s_j, r_j)}_{j=1,\dots,m}$ with edge attributes $e_j$, a sender node index $s_j$ and a receiver node index $r_j$. 
+\end{block} \pause
+
+\begin{block}{Definition: Graph neural network}
+A graph neural network (GNN) is a mapping $\omega: G \mapsto G'$ that maps a feature graph $G=(u,V,E)$ to another feature graph $G'=(u', V', E')$ with $V'=\set{v'_i}_{i=1,\dots,n}$ and $E'=\set{(e'_j, s_j, r_j)}_{j=1,\dots,m}$. 
+\end{block}
+\end{frame}
+
+
+\begin{frame}[t]
+\frametitle{An implementation of $\omega$}
+
+
+\begin{columns}[T]
+\begin{column}{.5\textwidth}
+
+\begin{block}{}
+Let $\phi_v, \phi_e, \phi_u$ be learnable non-linear functions (e.g. multilayer perceptrons).
+\begin{enumerate}[<+->]
+\item Update all edges
+\item Aggregate neighborhoods
+\item Update all nodes
+\item Aggregate nodes
+\item Update global attribute
+\end{enumerate}
+\end{block}
+\end{column}
+
+\begin{column}{.5\textwidth}
+\begin{block}{}
+\only<1>{\hspace*{0.5cm} \adjincludegraphics[width=0.8\linewidth, valign=t]{figures/edge_update.pdf}}
+\only<2>{\hspace*{0.5cm} \adjincludegraphics[width=0.8\linewidth, valign=t]{figures/edge_aggregate.pdf}}
+\only<3>{\hspace*{0.5cm} \adjincludegraphics[width=0.8\linewidth, valign=t]{figures/node_update.pdf}}
+\only<4>{\hspace*{0.5cm} \adjincludegraphics[width=0.8\linewidth, valign=t]{figures/node_aggregate.pdf}}
+\only<5>{\hspace*{0.5cm} \adjincludegraphics[width=0.8\linewidth, valign=t]{figures/global_update.pdf}}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}
+\frametitle{Remarks}
+\begin{columns}[t]
+\begin{column}{.4\textwidth}
+A GNN is invariant to graph isomorphism, if the aggregation operations are symmetric functions (sum, average...) 
+\end{column}
+\begin{column}{.6\textwidth}
+\centering \adjincludegraphics[width=1\linewidth, valign=t]{figures/invariance.pdf} 
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}
+\frametitle{Remarks}
+\begin{itemize}
+\item A GNN is differentiable, if $\phi_v, \phi_e, \phi_u$ are (w.r.t. their weights $\theta$). \pause
+\item Therefore, we can backpropagate a loss signal in order to update $\theta$. \pause
+\item The loss may depend on $u'$ (graph focused), $V'$ (node focused) or $E'$ (edge focused) or all of these. 
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Message passing}
+\begin{columns}[t]
+\begin{column}{.4\textwidth}
+Message passing: a composition of a GNN $\omega$ with itself for a fixed number of iterations: $\omega(\omega(\dots\omega(G)))$
+\end{column}
+\begin{column}{.6\textwidth}
+\centering \adjincludegraphics[width=1\linewidth, valign=t]{figures/message_passing.pdf} 
+\end{column}
+\end{columns} \pause
+\begin{itemize}
+\item If the global attribute $u$ is excluded, the output of a node $v$ after $N$ iterations is conditioned on all nodes with a distance of at most $N$ to $v$. 
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{A brief history of GNNs}
+
+\begin{block}{}
+The Graph Neural Network Model\\
+\centering -- Scarselli et al., 2009 
+\end{block}
+
+ \begin{columns}[t]
+\begin{column}{.5\textwidth}
+
+\begin{block}{}
+Neural Message Passing\\
+\centering -- Gilmer et al., 2017
+\end{block}
+\begin{block}{}
+Relational inductive biases, deep learning, and graph networks\\
+\centering -- Battaglia et al., 2018
+\end{block}
+\end{column}
+\begin{column}{.5\textwidth} 
+
+\begin{block}{}
+Spectral Networks\\
+\centering -- Bruna et al., 2014
+\end{block}
+\begin{block}{}
+Graph Convolutional Networks\\
+\centering -- Kipf et al., 2017
+\end{block}
+\end{column}
+\end{columns} 
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Representation learning}
+\centering What do the learned representations $v_i$, $e_j$ and $u$ mean? \pause \\
+\centering Short answer: We do not know. \pause \\ 
+But we can have an idea: \pause
+\bigskip 
+\begin{columns}[t]
+\begin{column}{.5\textwidth}
+\adjincludegraphics[width=0.9\linewidth, valign=t]{figures/discrete_classes.pdf}
+\end{column}
+\begin{column}{.5\textwidth}
+\adjincludegraphics[width=0.9\linewidth, valign=t]{figures/representation.pdf}
+\end{column}
+\end{columns}
+\bigskip
+We use a $D$ dimensional latent space where each neuron could represent a rather simple, independent property. Some of these properties, we can try to interpret as a human. \\
+$\implies$ Empirical: A shallow model on top (e.g. a linear combination) could make accurate predictions.
+\end{frame}
+
+\begin{frame}
+\frametitle{Some GNN applications}
+\begin{block}{Predict properties of chemical molecules}
+\begin{columns}[t]
+\begin{column}{.4\textwidth}
+\centering \adjincludegraphics[width=0.9\linewidth, valign=t]{figures/molecule.pdf}
+\end{column}
+\begin{column}{.6\textwidth}
+\centering \footnotesize Neural Message Passing for Quantum Chemistry\\
+\centering -- Gilmer et al., 2017
+\end{column}
+\end{columns}
+\end{block}
+
+\begin{block}{Solve SAT}
+\begin{columns}[t]
+\begin{column}{.4\textwidth}
+\centering \footnotesize Learning a SAT solver from single-bit supervision \\
+\centering-- Selsam et al., 2019
+\end{column}
+\begin{column}{.6\textwidth}
+\adjincludegraphics[width=1\linewidth,valign=t]{figures/NeuroSAT.pdf}
+\end{column}
+\end{columns}
+\end{block}
+
+\begin{block}{Timesteps in a dynamic physics system}
+\begin{columns}[t]
+\begin{column}{.5\textwidth}
+\centering \adjincludegraphics[width=0.95\linewidth, valign=t]{figures/physics.png}
+\centering \footnotesize (github.com/deepmind/graph\_nets)
+\end{column}
+\begin{column}{.5\textwidth}
+\footnotesize Relational inductive biases, deep learning, and graph networks \\
+ \centering-- Battaglia et al., 2018
+\end{column}
+\end{columns}
+\end{block}
+
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{GNN: A practical example}
+
+\end{frame}
+
+
+\end{document}
